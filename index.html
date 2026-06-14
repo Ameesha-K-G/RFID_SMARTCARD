@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Ticketing | Admin Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script type="text/javascript">
+        (function() {
+            emailjs.init("c5Oo9x4ciD9_eBMzf"); 
+        })();
+    </script>
+
+    <style>
+        :root { 
+            --dark: #1e272e; 
+            --blue: #0d6efd; 
+            --red: #dc3545; 
+            --green: #198754; 
+            --gray-bg: #f8f9fa;
+        }
+        body { background-color: var(--gray-bg); font-family: 'Segoe UI', sans-serif; }
+        
+        /* Smooth transitions */
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Login Screen Card */
+        .login-container { max-width: 420px; margin-top: 8%; }
+        .login-card { border: none; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); background: #ffffff; }
+
+        /* Admin Dashboard Styles */
+        .navbar { background: var(--dark); border-bottom: 4px solid var(--blue); color: white; }
+        .passenger-card { border: none; border-radius: 20px; background: white; box-shadow: 0 8px 24px rgba(0,0,0,0.04); transition: all 0.3s ease; }
+        .passenger-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0,0,0,0.08); }
+        
+        /* Low balance pulse */
+        .low-bal-active { border: 2px solid var(--red) !important; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
+        
+        .balance-val { font-size: 2.5rem; font-weight: 800; color: #2d3436; }
+        .status-text { font-size: 0.85rem; font-weight: bold; letter-spacing: 1px; }
+        
+        .metric-card { border: none; border-radius: 15px; background: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+    </style>
+</head>
+<body>
+
+<div id="login-screen" class="container login-container fade-in">
+    <div class="card login-card p-5">
+        <div class="text-center mb-4">
+            <div class="bg-primary text-white d-inline-block p-3 rounded-circle mb-3 shadow">
+                <i class="bi bi-shield-lock-fill h3"></i>
+            </div>
+            <h3 class="fw-bold text-dark">RFID Smart Transit</h3>
+            <p class="text-muted small">Administrative Terminal Authentication</p>
+        </div>
+        
+        <div id="login-error" class="alert alert-danger d-none small text-center" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> Invalid Admin Credentials.
+        </div>
+
+        <form id="login-form">
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">Admin Email</label>
+                <input type="email" id="admin-email" class="form-control form-control-lg bg-light" placeholder="admin@transit.com" required>
+            </div>
+            <div class="mb-4">
+                <label class="form-label small fw-bold text-muted">Password</label>
+                <input type="password" id="admin-pass" class="form-control form-control-lg bg-light" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill shadow-sm fw-bold">
+                Log In <i class="bi bi-arrow-right-short"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<div id="dashboard-screen" class="d-none fade-in">
+    <nav class="navbar p-3 shadow mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <span class="h5 mb-0 fw-bold"><i class="bi bi-cpu text-info"></i> SMART TICKETING ADMIN</span>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge bg-success px-3 py-2"><i class="bi bi-envelope-check"></i> EMAIL ALERTS: LIVE</span>
+                <button onclick="logout()" class="btn btn-sm btn-outline-danger px-3 rounded-pill fw-bold"><i class="bi bi-box-arrow-right"></i> Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="metric-card p-3 d-flex align-items-center justify-content-between border-start border-primary border-4">
+                    <div>
+                        <span class="text-muted small fw-bold">TOTAL REGISTERED</span>
+                        <h4 class="fw-bold mb-0 text-dark" id="metric-registered">3 Passengers</h4>
+                    </div>
+                    <i class="bi bi-people-fill text-primary h2 mb-0 opacity-50"></i>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card p-3 d-flex align-items-center justify-content-between border-start border-warning border-4">
+                    <div>
+                        <span class="text-muted small fw-bold">CRITICAL ALERTS</span>
+                        <h4 class="fw-bold mb-0 text-dark" id="metric-alerts">0 Active</h4>
+                    </div>
+                    <i class="bi bi-exclamation-octagon-fill text-warning h2 mb-0 opacity-50"></i>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card p-3 d-flex align-items-center justify-content-between border-start border-success border-4">
+                    <div>
+                        <span class="text-muted small fw-bold">GATE SYSTEM STATUS</span>
+                        <h4 class="fw-bold mb-0 text-success">ONLINE</h4>
+                    </div>
+                    <i class="bi bi-wifi text-success h2 mb-0 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div id="card-V1" class="card passenger-card p-4 text-center">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-light text-dark border fw-bold px-2 py-1">Node #V1</span>
+                        <i class="bi bi-credit-card-2-front text-muted h4 mb-0"></i>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">Amee</h3>
+                    <p class="text-muted small mb-3">ameeshakg@gmail.com</p>
+                    <div id="bal-V1" class="balance-val mb-2">₹--</div>
+                    <div id="status-V1" class="status-text text-success"><i class="bi bi-check-circle-fill"></i> SYSTEM READY</div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div id="card-V2" class="card passenger-card p-4 text-center">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-light text-dark border fw-bold px-2 py-1">Node #V2</span>
+                        <i class="bi bi-credit-card-2-front text-muted h4 mb-0"></i>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">Arjun</h3>
+                    <p class="text-muted small mb-3">roseisha004@gmail.com</p>
+                    <div id="bal-V2" class="balance-val mb-2">₹--</div>
+                    <div id="status-V2" class="status-text text-success"><i class="bi bi-check-circle-fill"></i> SYSTEM READY</div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div id="card-V3" class="card passenger-card p-4 text-center">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-light text-dark border fw-bold px-2 py-1">Node #V3</span>
+                        <i class="bi bi-credit-card-2-front text-muted h4 mb-0"></i>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">Sneha</h3>
+                    <p class="text-muted small mb-3">sneha_recipient@gmail.com</p>
+                    <div id="bal-V3" class="balance-val mb-2">₹--</div>
+                    <div id="status-V3" class="status-text text-success"><i class="bi bi-check-circle-fill"></i> SYSTEM READY</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // BLYNK & EMAILJS CREDENTIALS
+    const AUTH_TOKEN = "vm9-b3xu2W64umjqXeuAK6qRrDqR8x9-";
+    const BLYNK_BASE = `https://sgp1.blynk.cloud/external/api/get?token=${AUTH_TOKEN}`;
+    const SERVICE_ID = "service_ubva4fh";
+    const TEMPLATE_ID = "template_tpla7sw";
+
+    // LOGIN AUTHENTICATION HANDLER
+    const MOCK_ADMIN_USER = "admin@transit.com";
+    const MOCK_ADMIN_PASS = "admin123"; // Give these out in your GitHub README for demonstration!
+
+    let updateInterval = null;
+    let alertSent = { V1: false, V2: false, V3: false };
+
+    document.getElementById("login-form").addEventListener("submit", function(e) {
+        e.preventDefault();
+        const inputEmail = document.getElementById("admin-email").value;
+        const inputPass = document.getElementById("admin-pass").value;
+
+        if(inputEmail === MOCK_ADMIN_USER && inputPass === MOCK_ADMIN_PASS) {
+            document.getElementById("login-screen").classList.add("d-none");
+            document.getElementById("dashboard-screen").classList.remove("d-none");
+            
+            // Core logic triggers only when logged in
+            updateDashboard();
+            updateInterval = setInterval(updateDashboard, 2000); 
+        } else {
+            const errEl = document.getElementById("login-error");
+            errEl.classList.remove("d-none");
+        }
+    });
+
+    function logout() {
+        clearInterval(updateInterval);
+        document.getElementById("admin-pass").value = "";
+        document.getElementById("dashboard-screen").classList.add("d-none");
+        document.getElementById("login-screen").classList.remove("d-none");
+        document.getElementById("login-error").classList.add("d-none");
+    }
+
+    // CORE DATA SYNCHRONIZATION 
+    async function updateDashboard() {
+        let activeAlertsCount = 0;
+        
+        // Dynamic status verification across nodes
+        activeAlertsCount += await syncUser("V1", "Amee", "ameeshakg@gmail.com"); 
+        activeAlertsCount += await syncUser("V2", "Arjun", "roseisha004@gmail.com");
+        activeAlertsCount += await syncUser("V3", "Sneha", "sneha_recipient@gmail.com");
+
+        // Dynamically update upper statistics row
+        const summaryAlertsEl = document.getElementById("metric-alerts");
+        if (activeAlertsCount > 0) {
+            summaryAlertsEl.innerText = `${activeAlertsCount} Critical`;
+            summaryAlertsEl.className = "fw-bold mb-0 text-danger";
+        } else {
+            summaryAlertsEl.innerText = "0 Active";
+            summaryAlertsEl.className = "fw-bold mb-0 text-dark";
+        }
+    }
+
+    async function syncUser(pin, name, email) {
+        let isAlertActive = 0;
+        try {
+            const res = await fetch(`${BLYNK_BASE}&${pin}`);
+            const val = await res.text();
+            
+            if (!isNaN(val)) {
+                const bal = parseFloat(val).toFixed(1);
+                const balEl = document.getElementById(`bal-${pin}`);
+                const cardEl = document.getElementById(`card-${pin}`);
+                const statEl = document.getElementById(`status-${pin}`);
+
+                balEl.innerText = "₹" + bal;
+
+                if (bal < 20) {
+                    cardEl.classList.add("low-bal-active");
+                    statEl.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> LOW BALANCE`;
+                    statEl.className = "status-text text-danger";
+                    isAlertActive = 1;
+                    
+                    if (!alertSent[pin]) {
+                        sendEmail(name, bal, email);
+                        alertSent[pin] = true;
+                    }
+                } else {
+                    cardEl.classList.remove("low-bal-active");
+                    statEl.innerHTML = `<i class="bi bi-check-circle-fill"></i> SYSTEM READY`;
+                    statEl.className = "status-text text-success";
+                    alertSent[pin] = false; 
+                }
+            }
+        } catch (e) { console.log("Blynk cloud polling timeout."); }
+        return isAlertActive;
+    }
+
+    function sendEmail(name, balance, targetEmail) {
+        const params = {
+            to_name: name,
+            to_email: targetEmail,
+            message: balance 
+        };
+
+        emailjs.send(SERVICE_ID, TEMPLATE_ID, params)
+            .then(() => console.log(`Alert notification dispatched to ${name}.`))
+            .catch((err) => console.log("SMTP API Dispatch Error:", err));
+    }
+</script>
+</body>
+</html>
